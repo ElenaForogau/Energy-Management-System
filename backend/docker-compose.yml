@@ -1,0 +1,196 @@
+#version: '3.8'
+
+services:
+
+  traefik:
+    container_name: traefik
+    image: traefik:v3.2
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--log.level=DEBUG"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "9980:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik_logs:/var/log/traefik
+    networks:
+      - shared-network
+
+
+
+  user-mysql:
+    container_name: user-mysql
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3307:3306"
+    volumes:
+      - user-mysql-data:/var/lib/mysql
+    networks:
+      - shared-network
+    # restart: unless-stopped
+
+  user-spring:
+    #container_name: user-spring
+    build:
+      context: ./userManagement 
+      dockerfile: ./Dockerfile
+    # ports:
+    #   - "9194:9192"
+    deploy:
+      replicas: 2
+    environment:
+      - PORT=9192
+      - DB_IP=user-mysql
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASSWORD=admin
+      - DB_DBNAME=user_db
+      # - DEVICE_SERVICE_URL=http://device-spring:9193/ # URL pentru microserviciul device
+    networks:
+      - shared-network
+    extra_hosts:
+      - "device.localhost:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=Host(`users.localhost`)"
+      - "traefik.http.routers.users.entrypoints=web"
+      - "traefik.http.services.users.loadbalancer.server.port=9192"
+    # restart: unless-stopped
+
+  device-mysql:
+    container_name: device-mysql
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: device_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3308:3306"
+    volumes:
+      - device-mysql-data:/var/lib/mysql
+    networks:
+      - shared-network
+    restart: unless-stopped
+
+  device-spring:
+    # container_name: device-spring
+    build:
+      context: ./deviceManagement 
+      dockerfile: ./Dockerfile
+    # ports:
+    #   - "9193:9192"
+    deploy:
+      replicas: 2
+    environment:
+      - PORT=9192
+      - DB_IP=device-mysql
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASSWORD=admin
+      - DB_DBNAME=device_db
+      - RABBITMQ_HOST=rabbitmq
+    networks:
+      - shared-network
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.device.rule=Host(`device.localhost`)"
+      - "traefik.http.routers.device.entrypoints=web"
+      - "traefik.http.services.device.loadbalancer.server.port=9192"
+
+    restart: unless-stopped
+
+  monitoring-mysql:
+    container_name: monitoring-mysql
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: monitoring_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3309:3306"
+    volumes:
+      - monitoring-mysql-data:/var/lib/mysql
+    networks:
+      - shared-network
+    restart: unless-stopped
+
+  monitoring-spring:
+    container_name: monitoring-spring
+    build:
+      context: ./MonitoringandCommunication 
+      dockerfile: ./Dockerfile
+    ports:
+      - "9195:9192"
+    environment:
+      - PORT=9192
+      - DB_IP=monitoring-mysql
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASSWORD=admin
+      - DB_DBNAME=monitoring_db
+      - RABBITMQ_HOST=rabbitmq
+    networks:
+      - shared-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.monit.rule=Host(`monitoring.localhost`)"
+      - "traefik.http.routers.monit.entrypoints=web"
+      - "traefik.http.services.monit.loadbalancer.server.port=9192"
+    restart: unless-stopped
+
+  chat-spring:
+    build:
+      context: ./ChatMicroservice 
+      dockerfile: ./Dockerfile
+    ports:
+      - "9199:9199" 
+    environment:
+      - PORT=9199
+      - SPRING_SECURITY_USER_NAME=admin
+      - SPRING_SECURITY_USER_PASSWORD=admin
+    networks:
+      - shared-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chat.rule=Host(`chat.localhost`)"
+      - "traefik.http.routers.chat.entrypoints=web"
+      - "traefik.http.services.chat.loadbalancer.server.port=9199"
+    restart: unless-stopped
+  
+
+  rabbitmq:  
+    container_name: rabbitmq  
+    image: rabbitmq:4.0.3-management
+    ports:     
+      - "15672:15672"    
+      - "5672:5672"  
+    networks:    
+      - shared-network
+    restart: unless-stopped
+
+networks:
+  shared-network:
+    driver: bridge
+
+volumes:
+  user-mysql-data:
+    driver: local
+  device-mysql-data:
+    driver: local
+  monitoring-mysql-data:
+    driver: local
+  traefik_logs:
+    driver: local

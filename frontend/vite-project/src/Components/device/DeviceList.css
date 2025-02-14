@@ -1,0 +1,70 @@
+.device-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.device-table th,
+.device-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.device-table th {
+  background-color: #f2f2f2;
+}
+
+.device-button {
+  padding: 5px 10px;
+  margin: 0 5px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.device-button:hover {
+  opacity: 0.8;
+}
+
+.device-button.edit {
+  background-color: #4caf50;
+}
+
+.device-button.delete {
+  background-color: #f44336;
+}
+
+.device-button.add {
+  background-color: #4caf50;
+  color: #fff;
+  padding: 8px 16px;
+  margin-bottom: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+.device-button.add:hover {
+  opacity: 0.8;
+}
+
+.device-button.user {
+  background-color: #2196f3;
+  color: #fff;
+  padding: 8px 16px;
+  margin-bottom: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+.device-button.user:hover {
+  opacity: 0.8;
+}
+
+.device-button.chat {
+  background-color: #745506;
+  color: #fff;
+  padding: 8px 16px;
+  margin-bottom: 10px;
+  border: none;
+  cursor: pointer;
+}
